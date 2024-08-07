@@ -104,6 +104,9 @@ type RunFns struct {
 
 	// WorkingDir specifies which working directory an exec function should run in.
 	WorkingDir string
+
+	// EnableKubernetes allows running KRM functions directly in Kubernetes
+	EnableKubernetes bool
 }
 
 // Execute runs the command
@@ -323,6 +326,11 @@ func (r RunFns) getFunctionFilters(global bool, fns ...*yaml.RNode) (
 		// merge envs from imperative and declarative
 		spec.Container.Env = r.mergeContainerEnv(spec.Container.Env)
 
+		// Adjust for Kubernetes execution
+		if r.EnableKubernetes {
+			spec.Container.EnableKubernetes = true
+		}
+
 		c, err := r.functionFilterProvider(*spec, api, user.Current)
 		if err != nil {
 			return nil, err
@@ -482,10 +490,11 @@ func (r *RunFns) ffp(spec runtimeutil.FunctionSpec, api *yaml.RNode, currentUser
 
 		c := container.NewContainer(
 			runtimeutil.ContainerSpec{
-				Image:         spec.Container.Image,
-				Network:       spec.Container.Network,
-				StorageMounts: storageMounts,
-				Env:           spec.Container.Env,
+				Image:            spec.Container.Image,
+				Network:          spec.Container.Network,
+				StorageMounts:    storageMounts,
+				Env:              spec.Container.Env,
+				EnableKubernetes: spec.Container.EnableKubernetes,
 			},
 			uidgid,
 		)

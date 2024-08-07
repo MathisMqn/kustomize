@@ -75,14 +75,15 @@ func toStorageMounts(mounts []string) []runtimeutil.StorageMount {
 func NewFnPlugin(o *types.FnPluginLoadingOptions) *FnPlugin {
 	return &FnPlugin{
 		runFns: runfn.RunFns{
-			Functions:      []*yaml.RNode{},
-			Network:        o.Network,
-			EnableStarlark: o.EnableStar,
-			EnableExec:     o.EnableExec,
-			StorageMounts:  toStorageMounts(o.Mounts),
-			Env:            o.Env,
-			AsCurrentUser:  o.AsCurrentUser,
-			WorkingDir:     o.WorkingDir,
+			Functions:        []*yaml.RNode{},
+			Network:          o.Network,
+			EnableStarlark:   o.EnableStar,
+			EnableExec:       o.EnableExec,
+			StorageMounts:    toStorageMounts(o.Mounts),
+			Env:              o.Env,
+			AsCurrentUser:    o.AsCurrentUser,
+			WorkingDir:       o.WorkingDir,
+			EnableKubernetes: o.EnableKubernetes,
 		},
 	}
 }

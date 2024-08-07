@@ -23,6 +23,9 @@ func AddFunctionBasicsFlags(set *pflag.FlagSet) {
 	set.BoolVar(
 		&theFlags.fnOptions.AsCurrentUser, "as-current-user", false,
 		"use the uid and gid of the command executor to run the function in the container")
+	set.BoolVar(
+		&theFlags.fnOptions.EnableKubernetes, "enable-kubernetes", false,
+		"enable running KRM functions in Kubernetes instead of Docker")
 }
 
 func AddFunctionAlphaEnablementFlags(set *pflag.FlagSet) {

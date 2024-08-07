@@ -135,7 +135,7 @@ metadata:
 			require.NoError(t, instance.setupExec())
 
 			tt.expectedArgs = append(tt.expectedArgs,
-				runtimeutil.NewContainerEnvFromStringSlice(instance.Env).GetDockerFlags()...)
+				runtimeutil.NewContainerEnvFromStringSlice(instance.Env).GetFlags("docker")...)
 			tt.expectedArgs = append(tt.expectedArgs, instance.Image)
 
 			if !assert.Equal(t, "docker", instance.Exec.Path) {

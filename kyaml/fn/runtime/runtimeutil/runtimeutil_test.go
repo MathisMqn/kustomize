@@ -1482,7 +1482,36 @@ func TestContainerEnvGetDockerFlags(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		flags := tc.input.GetDockerFlags()
+		flags := tc.input.GetFlags("docker")
+		assert.Equal(t, tc.output, flags)
+	}
+}
+
+func TestContainerEnvGetKubernetesFlags(t *testing.T) {
+	tests := []struct {
+		input  *ContainerEnv
+		output []string
+	}{
+		{
+			input:  NewContainerEnvFromStringSlice([]string{"foo=bar"}),
+			output: []string{"--env", "LOG_TO_STDERR=true", "--env", "STRUCTURED_RESULTS=true", "--env", "foo=bar"},
+		},
+		{
+			input:  NewContainerEnvFromStringSlice([]string{"foo"}),
+			output: []string{"--env", "LOG_TO_STDERR=true", "--env", "STRUCTURED_RESULTS=true", "--env", "foo"},
+		},
+		{
+			input:  NewContainerEnvFromStringSlice([]string{"foo=bar", "baz"}),
+			output: []string{"--env", "LOG_TO_STDERR=true", "--env", "STRUCTURED_RESULTS=true", "--env", "foo=bar", "--env", "baz"},
+		},
+		{
+			input:  NewContainerEnv(),
+			output: []string{"--env", "LOG_TO_STDERR=true", "--env", "STRUCTURED_RESULTS=true"},
+		},
+	}
+
+	for _, tc := range tests {
+		flags := tc.input.GetFlags("kubernetes")
 		assert.Equal(t, tc.output, flags)
 	}
 }

@@ -38,8 +38,10 @@ type ContainerEnv struct {
 	VarsToExport []string
 }
 
-// GetDockerFlags returns docker run style env flags
-func (ce *ContainerEnv) GetDockerFlags() []string {
+// GetFlags returns environment flags suitable for the specified target (docker or kubernetes).
+// For "docker", it returns flags in the docker run style (-e key=value).
+// For "kubernetes", it returns flags in the kubectl run style (--env key=value).
+func (ce *ContainerEnv) GetFlags(target string) []string {
 	envs := ce.EnvVars
 	if envs == nil {
 		envs = make(map[string]string)
@@ -52,12 +54,24 @@ func (ce *ContainerEnv) GetDockerFlags() []string {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	for _, key := range keys {
-		flags = append(flags, "-e", key+"="+envs[key])
-	}
 
-	for _, key := range ce.VarsToExport {
-		flags = append(flags, "-e", key)
+	switch target {
+	case "docker":
+		for _, key := range keys {
+			flags = append(flags, "-e", key+"="+envs[key])
+		}
+		for _, key := range ce.VarsToExport {
+			flags = append(flags, "-e", key)
+		}
+	case "kubernetes":
+		for _, key := range keys {
+			flags = append(flags, "--env", key+"="+envs[key])
+		}
+		for _, key := range ce.VarsToExport {
+			flags = append(flags, "--env", key)
+		}
+	default:
+		// Handle unsupported target if necessary
 	}
 
 	return flags
@@ -156,6 +170,9 @@ type ContainerSpec struct {
 
 	// Env is a slice of env string that will be exposed to container
 	Env []string `json:"envs,omitempty" yaml:"envs,omitempty"`
+
+	// EnableKubernetes specifies if the container should run in Kubernetes
+	EnableKubernetes bool `json:"enableKubernetes,omitempty" yaml:"enableKubernetes,omitempty"`
 }
 
 // StarlarkSpec defines how to run a function as a starlark program
