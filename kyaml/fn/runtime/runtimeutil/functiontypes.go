@@ -38,10 +38,8 @@ type ContainerEnv struct {
 	VarsToExport []string
 }
 
-// GetFlags returns environment flags suitable for the specified target (docker or kubernetes).
-// For "docker", it returns flags in the docker run style (-e key=value).
-// For "kubernetes", it returns flags in the kubectl run style (--env key=value).
-func (ce *ContainerEnv) GetFlags(target string) []string {
+// GetDockerFlags returns docker run style env flags
+func (ce *ContainerEnv) GetDockerFlags() []string {
 	envs := ce.EnvVars
 	if envs == nil {
 		envs = make(map[string]string)
@@ -54,24 +52,12 @@ func (ce *ContainerEnv) GetFlags(target string) []string {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	for _, key := range keys {
+		flags = append(flags, "-e", key+"="+envs[key])
+	}
 
-	switch target {
-	case "docker":
-		for _, key := range keys {
-			flags = append(flags, "-e", key+"="+envs[key])
-		}
-		for _, key := range ce.VarsToExport {
-			flags = append(flags, "-e", key)
-		}
-	case "kubernetes":
-		for _, key := range keys {
-			flags = append(flags, "--env", key+"="+envs[key])
-		}
-		for _, key := range ce.VarsToExport {
-			flags = append(flags, "--env", key)
-		}
-	default:
-		// Handle unsupported target if necessary
+	for _, key := range ce.VarsToExport {
+		flags = append(flags, "-e", key)
 	}
 
 	return flags

@@ -1367,7 +1367,7 @@ func TestRunFns_mergeContainerEnv(t *testing.T) {
 		tc := testcases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			envs := tc.instance.mergeContainerEnv(tc.inputEnvs)
-			assert.Equal(t, tc.expect.GetFlags("docker"), runtimeutil.NewContainerEnvFromStringSlice(envs).GetFlags("docker"))
+			assert.Equal(t, tc.expect.GetDockerFlags(), runtimeutil.NewContainerEnvFromStringSlice(envs).GetDockerFlags())
 		})
 	}
 }

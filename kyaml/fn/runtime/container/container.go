@@ -4,6 +4,9 @@
 package container
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -179,46 +182,17 @@ func (c *Filter) setupExec() error {
 
 // getCommand returns the command + args to run to spawn the container
 func (c *Filter) getCommand() (string, []string) {
-	// if EnableKubernetes is true, use kubectl run to run the container
+	// if EnableKubernetes is true, use kubectl to run the container
 	if c.ContainerSpec.EnableKubernetes {
-		// Use the image name as the pod name
-		podName := strings.Split(path.Base(c.Image), ":")[0]
-
-		// Handle UID and GID, default to 65534 (nobody) if c.UIDGID is "nobody"
-		uid := "65534"
-		gid := "65534"
-		if c.UIDGID != "nobody" && c.UIDGID != "" {
-			uidgid := strings.Split(c.UIDGID, ":")
-			if len(uidgid) == 2 {
-				uid = uidgid[0]
-				gid = uidgid[1]
-			}
-		}
-
-		// Base kubectl run command
-		args := []string{"run", podName,
-			"--rm", "--stdin", "--quiet", // Automatically remove the pod, attach stdin, and suppress output
-			"--image", c.Image, // Specify the container image
-			"--restart=Never", // Do not restart the pod
-			"--overrides", fmt.Sprintf(`{
-			"apiVersion": "v1",
-			"spec": {
-				"securityContext": {
-					"runAsUser": %s,
-					"runAsGroup": %s,
-					"privileged": false,
-					"allowPrivilegeEscalation": false
-				},
-				"hostNetwork": %t
-			}
-		}`, uid, gid, c.ContainerSpec.Network),
-		}
-
-		args = append(args, runtimeutil.NewContainerEnvFromStringSlice(c.Env).GetFlags("kubernetes")...)
-
-		return "kubectl", args
+		return c.getKubernetesCommand()
 	}
 
+	// otherwise use docker
+	return c.getDockerCommand()
+}
+
+// getDockerCommand returns the command + args to run to spawn the container in docker
+func (c *Filter) getDockerCommand() (string, []string) {
 	network := runtimeutil.NetworkNameNone
 	if c.ContainerSpec.Network {
 		network = runtimeutil.NetworkNameHost
@@ -245,9 +219,119 @@ func (c *Filter) getCommand() (string, []string) {
 		args = append(args, "--mount", storageMount.String())
 	}
 
-	args = append(args, runtimeutil.NewContainerEnvFromStringSlice(c.Env).GetFlags("docker")...)
+	args = append(args, runtimeutil.NewContainerEnvFromStringSlice(c.Env).GetDockerFlags()...)
 	a := append(args, c.Image) //nolint:gocritic
 	return "docker", a
+}
+
+// getKubernetesCommand returns the command + args to run to spawn the container in kubernetes
+func (c *Filter) getKubernetesCommand() (string, []string) {
+	// Use the image name as the pod name
+	podName := strings.Split(path.Base(c.Image), ":")[0]
+
+	// Define envs
+	envs := []map[string]interface{}{}
+	for k, v := range runtimeutil.NewContainerEnvFromStringSlice(c.Env).EnvVars {
+		envs = append(envs, map[string]interface{}{
+			"name":  k,
+			"value": v,
+		})
+	}
+
+	// Convert envs to JSON
+	envsJSON, _ := json.Marshal(envs)
+
+	// Handle UID and GID, default to 65534 (nobody) if c.UIDGID is "nobody"
+	uid := "65534"
+	gid := "65534"
+	if c.UIDGID != "nobody" && c.UIDGID != "" {
+		uidgid := strings.Split(c.UIDGID, ":")
+		if len(uidgid) == 2 {
+			uid = uidgid[0]
+			gid = uidgid[1]
+		}
+	}
+
+	// Define volumes and volume mounts
+	volumes := []map[string]interface{}{}
+	volumeMounts := []map[string]interface{}{}
+
+	for _, storageMount := range c.StorageMounts {
+		// Convert declarative relative paths to absolute
+		absPath := storageMount.Src
+		if !filepath.IsAbs(storageMount.Src) {
+			absPath = filepath.Join(c.Exec.WorkingDir, storageMount.Src)
+		}
+
+		// Generate a unique volume name based on the storage mount
+		volumeHash := sha256.Sum256([]byte(storageMount.String()))
+		volumeName := hex.EncodeToString(volumeHash[:])[:32]
+
+		switch storageMount.MountType {
+		case "bind":
+			volumes = append(volumes, map[string]interface{}{
+				"name": volumeName,
+				"hostPath": map[string]interface{}{
+					"path": absPath,
+				},
+			})
+		case "tmpfs":
+			volumes = append(volumes, map[string]interface{}{
+				"name": volumeName,
+				"emptyDir": map[string]interface{}{
+					"medium": "Memory",
+				},
+			})
+		case "volume":
+			volumes = append(volumes, map[string]interface{}{
+				"name": volumeName,
+				"persistentVolumeClaim": map[string]interface{}{
+					"claimName": storageMount.Src,
+				},
+			})
+		default:
+			continue
+		}
+
+		volumeMounts = append(volumeMounts, map[string]interface{}{
+			"name":      volumeName,
+			"mountPath": storageMount.DstPath,
+		})
+	}
+
+	// Convert volumes and volume mounts to JSON
+	volumesJSON, _ := json.Marshal(volumes)
+	volumeMountsJSON, _ := json.Marshal(volumeMounts)
+
+	// Base kubectl run command
+	args := []string{"run", podName,
+		"--rm", "--stdin", "--quiet", // Automatically remove the pod, attach stdin, and suppress output
+		"--image", c.Image, // Specify the container image
+		"--restart=Never", // Do not restart the pod
+		"--overrides", fmt.Sprintf(`{
+		"apiVersion": "v1",
+		"spec": {
+			"containers": [{
+				"name": "krm-function",
+				"image": "%s",
+				"stdin": true,
+				"stdinOnce": true,
+				"env": %s,
+				"volumeMounts": %s
+			}],
+			"securityContext": {
+				"runAsUser": %s,
+				"runAsGroup": %s,
+				"privileged": false,
+				"allowPrivilegeEscalation": false
+			},
+			"hostNetwork": %t,
+			"volumes": %s
+		}
+	}`, c.Image, envsJSON, volumeMountsJSON, uid, gid, c.ContainerSpec.Network, volumesJSON),
+	}
+
+	return "kubectl", args
 }
 
 // NewContainer returns a new container filter

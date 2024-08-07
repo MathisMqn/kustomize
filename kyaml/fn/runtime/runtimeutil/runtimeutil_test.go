@@ -1482,7 +1482,7 @@ func TestContainerEnvGetDockerFlags(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		flags := tc.input.GetFlags("docker")
+		flags := tc.input.GetDockerFlags()
 		assert.Equal(t, tc.output, flags)
 	}
 }
@@ -1511,7 +1511,7 @@ func TestContainerEnvGetKubernetesFlags(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		flags := tc.input.GetFlags("kubernetes")
+		flags := tc.input.GetDockerFlags()
 		assert.Equal(t, tc.output, flags)
 	}
 }
