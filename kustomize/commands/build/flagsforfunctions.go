@@ -26,6 +26,9 @@ func AddFunctionBasicsFlags(set *pflag.FlagSet) {
 	set.BoolVar(
 		&theFlags.fnOptions.EnableKubernetes, "enable-kubernetes", false,
 		"enable running KRM functions in Kubernetes instead of Docker")
+	set.StringVar(
+		&theFlags.fnOptions.PodTimeout, "pod-running-timeout", "60s",
+		"timeout for the pod to run")
 }
 
 func AddFunctionAlphaEnablementFlags(set *pflag.FlagSet) {

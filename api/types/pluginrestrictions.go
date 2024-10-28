@@ -62,4 +62,6 @@ type FnPluginLoadingOptions struct {
 	WorkingDir string
 	// Enable running KRM functions in Kubernetes
 	EnableKubernetes bool
+	// Timeout for the pod
+	PodTimeout string
 }

@@ -84,6 +84,7 @@ func NewFnPlugin(o *types.FnPluginLoadingOptions) *FnPlugin {
 			AsCurrentUser:    o.AsCurrentUser,
 			WorkingDir:       o.WorkingDir,
 			EnableKubernetes: o.EnableKubernetes,
+			PodTimeout:       o.PodTimeout,
 		},
 	}
 }

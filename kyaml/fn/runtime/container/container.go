@@ -307,7 +307,8 @@ func (c *Filter) getKubernetesCommand() (string, []string) {
 	args := []string{"run", podName,
 		"--rm", "--stdin", "--quiet", // Automatically remove the pod, attach stdin, and suppress output
 		"--image", c.Image, // Specify the container image
-		"--restart=Never", // Do not restart the pod
+		"--restart=Never",                     // Do not restart the pod
+		"--pod-running-timeout", c.PodTimeout, // Set the pod timeout
 		"--overrides", fmt.Sprintf(`{
 		"apiVersion": "v1",
 		"spec": {

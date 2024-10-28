@@ -159,6 +159,9 @@ type ContainerSpec struct {
 
 	// EnableKubernetes specifies if the container should run in Kubernetes
 	EnableKubernetes bool `json:"enableKubernetes,omitempty" yaml:"enableKubernetes,omitempty"`
+
+	// PodTimeout specifies the timeout for the pod
+	PodTimeout string `json:"podTimeout,omitempty" yaml:"podTimeout,omitempty"`
 }
 
 // StarlarkSpec defines how to run a function as a starlark program

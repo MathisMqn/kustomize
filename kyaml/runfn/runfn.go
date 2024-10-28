@@ -107,6 +107,9 @@ type RunFns struct {
 
 	// EnableKubernetes allows running KRM functions directly in Kubernetes
 	EnableKubernetes bool
+
+	// PodTimeout is the timeout for the pod to run
+	PodTimeout string
 }
 
 // Execute runs the command
@@ -331,6 +334,9 @@ func (r RunFns) getFunctionFilters(global bool, fns ...*yaml.RNode) (
 			spec.Container.EnableKubernetes = true
 		}
 
+		// Adjust for PodTimeout
+		spec.Container.PodTimeout = r.PodTimeout
+
 		c, err := r.functionFilterProvider(*spec, api, user.Current)
 		if err != nil {
 			return nil, err
@@ -495,6 +501,7 @@ func (r *RunFns) ffp(spec runtimeutil.FunctionSpec, api *yaml.RNode, currentUser
 				StorageMounts:    storageMounts,
 				Env:              spec.Container.Env,
 				EnableKubernetes: spec.Container.EnableKubernetes,
+				PodTimeout:       spec.Container.PodTimeout,
 			},
 			uidgid,
 		)
